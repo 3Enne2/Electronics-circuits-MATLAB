@@ -1,0 +1,24 @@
+%Transistor circuits - BJT input characteristics
+%plotting I_e1 vs V_BE for V_BC=-1V assuming 0<V_BE<0.7V
+
+Area=5; beta_F=120; beta_R=0.3;     % Assuming a BJT has an emitter area of (mil^2):
+J_s=2e-10                           %Transport current density (uA/mil^2)
+T=300                               %Temp (K)
+k=1.381e-23; q=1.602e-19;           %Boltzmann constant (V*C*K^-1), elementary charge (C)
+V_T=k*T/q;
+I_s=J_s*Area                        % BJT transport saturation current
+alpha_F=beta_F/(1+beta_F);          %large forward current gain 
+alpha_R=beta_R/(1+beta_R);          %large signal reverse current gain of common-base
+I_es=I_s/alpha_F;                   %base-emitter saturation current
+V_BE=0.3:0.01:0.65;
+I_cs=I_s/alpha_R;                   %base-collector saturation current
+m=length(V_BE)
+for i=1:m
+I_fr(i)=I_es*exp((V_BE(i)/V_T)-1);  %Ebers-Moll Model - DC behaviour of the BJT
+I_r1(i)=I_cs*exp((-1.0/V_T)-1);
+I_e1(i)=abs(-I_fr(i)+alpha_R*I_r1(i));
+end
+plot(V_BE,I_e1)
+title('Input characteristics')
+xlabel('Base-emitter voltage, V')
+ylabel('Emitter current, A')
