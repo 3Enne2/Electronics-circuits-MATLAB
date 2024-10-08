@@ -43,3 +43,91 @@ specAn = dsp.SpectrumAnalyzer(...
     "SpectralAverages",50,...
     "ShowLegend",true);
 specAn(txFiltOut,chanOut)
+
+bitsPerSymbol = log2(modOrder)  % modOrder = 2^bitsPerSymbol
+delayInSymbols = txFilt.FilterSpanInSymbols/2 + rxFilt.FilterSpanInSymbols/2 
+delayInBits = delayInSymbols*bitsPerSymbol 
+srcAligned = srcBits(1:(end-delayInBits))
+demodAligned = demodOut((delayInBits+1):end)
+BER = numBitErrors/length(srcAligned)
+
+specAn = dsp.SpectrumAnalyzer("NumInputPorts",2, ...
+     "SpectralAverages",50,...
+     "ShowLegend",true);
+ specAn(txFiltOut,chanOut)
+
+mpChan = [0.8 0 0 0 0 0 0 0 -0.5 0 0 0 0 0 0 0 0.34].'
+%mpChan = [0.8; zeros(7,1); -0.5; zeros(7,1); 0.34];  % multipath channel
+stem(mpChan)                    %stem plot for visualisation
+mpChanOut = filter(mpChan, 1, txFiltOut)
+
+if exist("mpChanOut","var")  % code runs after you complete Task 3
+    
+    SNR = 15;  % dB
+    chanOut = awgn(mpChanOut,SNR,"measured");
+    
+    rxFiltOut = rxFilt(chanOut);
+    scatterplot(rxFiltOut)
+    title("Receive Filter Output")
+    demodOut = qamdemod(rxFiltOut,modOrder,"OutputType","bit","UnitAveragePower",true);
+    
+    % Calculate the BER
+    delayInSymbols = txFilt.FilterSpanInSymbols/2 + rxFilt.FilterSpanInSymbols/2;
+    delayInBits = delayInSymbols * bitsPerSymbol;
+    srcAligned = srcBits(1:(end-delayInBits));
+    demodAligned = demodOut((delayInBits+1):end);
+
+    numBitErrors = nnz(srcAligned~=demodAligned)
+    BER = numBitErrors/length(srcAligned)
+end
+
+
+%OFDM basic link - Inverse Fast Fourier Transform (FFT)
+ofdmModOut=ifft(modOut)    % compute IFFT of 16-QAM signal
+if exist("ofdmModOut","var")  % code runs after you complete Task 1
+    SNR = 15;  % dB
+    chanOut = awgn(ofdmModOut,SNR,"measured");
+end
+ofdmDemodOut=fft(chanOut)      %compute the FFT of received signal
+scatterplot(ofdmDemodOut)      %visualisation of oddmDemodOut OFDM demod output
+title("OFDM Demodulator Output");
+qamDemodOut = qamdemod(ofdmDemodOut,modOrder,"OutputType","bit","UnitAveragePower",true);
+numBitErrors = nnz(srcBits~=qamDemodOut)
+BER = numBitErrors/numBits
+
+% Apply channel to transmitter output.
+function chanOut = channel(sig,hasMP,hasAWGN,SNR)
+    % Apply multipath channel if selected
+    if hasMP
+        mpChan = [0.8; zeros(7,1); -0.5; zeros(7,1); 0.34]; 
+        mpChanOut = filter(mpChan,1,sig);
+    else
+        mpChanOut = sig;
+    end
+    % Apply AWGN if selected
+    if hasAWGN
+        chanOut = awgn(mpChanOut,SNR,"measured");
+    else
+        chanOut = mpChanOut;
+    end
+end
+
+%Freq domain equalization
+numCarr=8192                    %number of subcarriers
+numBits=numCarr*bitsPerSymbol   %calculate number of source bits to generate
+if exist("numBits","var")       % code r
+    srcBits = randi([0,1],numBits,1);
+    modOut = qammod(srcBits,modOrder,"InputType","bit","UnitAveragePower",true);
+end
+cycPrefLen=32                   %define cyclic prefix length to 32
+ofdmModOut = ofdmmod(ModOut, numCarr, cycPrefLen)
+if exist("ofdmModOut","var")    
+    mpChanOut = filter(mpChan,1,ofdmModOut);
+    chanOut = awgn(mpChanOut,SNR,"measured");
+end
+ofdmDemodOut = ofdmdemod(chanOut, numCarr, cycPrefLen)
+scatterplot(ofdmDemodOut)       %perform OFDM demodulation and create constellation
+mpChanFreq = fftshift(fft(mpChan,numCarr))
+eqOut=ofdmDemodOut./mpChanFreq  %Equalize by dividing signal by channel 
+                                % frequency response
+scatterplot(eqOut)
