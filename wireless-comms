@@ -120,7 +120,7 @@ if exist("numBits","var")       % code r
     modOut = qammod(srcBits,modOrder,"InputType","bit","UnitAveragePower",true);
 end
 cycPrefLen=32                   %define cyclic prefix length to 32
-ofdmModOut = ofdmmod(ModOut, numCarr, cycPrefLen)
+ofdmModOut = ofdmmod(modOut, numCarr, cycPrefLen)
 if exist("ofdmModOut","var")    
     mpChanOut = filter(mpChan,1,ofdmModOut);
     chanOut = awgn(mpChanOut,SNR,"measured");
