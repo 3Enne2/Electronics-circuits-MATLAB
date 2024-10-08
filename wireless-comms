@@ -1,0 +1,45 @@
+%Simulate_basic_digital_communications_link
+%implementing essential components of a single-carrier digital communication 
+%system
+%y-morris  06-10-24
+
+srcBits=randi([0,1],20000,1)    %randi func to create col vector srcBits ...
+                                %containing 20000 randomly generated bits/
+modOrder=16                     %create var with value = 16
+modOut=qammod(srcBits,modOrder,"InputType","bit")   %create modulated QAM signal
+scatterplot(modOut)             % creating constellation of modOut
+chanOut = modOut                %create variable chanOut 
+demodOut=qamdemod(chanOut,modOrder,"OutputType","bit")  %demodulate the received signal 
+check=isequal(srcBits,demodOut) %check if input and output vectors are identical
+
+modOut=qammod(srcBits,modOrder,"InputType","bit","UnitAveragePower",true)
+%Created 16-QAM signal from the bit sequence srcBits ^^^^^
+SNR=15;chanOut=awgn(modOut,SNR) %apply AWGN to modulated signal
+scatterplot(chanOut)
+demodOut=qamdemod(chanOut,modOrder,"OutputType","bit","UnitAveragePower",true)
+%demodulated the signal and specififed that signal has unit avg power
+check = isequal(srcBits,demodOut)
+%checked if srcBits and demodOut were identitical
+
+isBitError = srcBits~=demodOut  %Compare the source bits and received bits...
+                                %element-by-element to identify bit errors. 
+numBitErrors = nnz(isBitError)  %
+BER=numBitErrors/numBits        %
+
+txFilt=comm.RaisedCosineTransmitFilter
+rxFilt=comm.RaisedCosineReceiveFilter
+txFiltOut=txFilt(modOut)
+chanOut=awgn(txFiltOut,7,"measured")
+rxFiltOut=rxFilt(chanOut)       %Apply the receive filter tochannel output.
+
+if exist("rxFiltOut","var")  % code runs after you complete Task 4
+    scatterplot(rxFiltOut)
+    title("Receive Filter Output")
+    demodOut = qamdemod(rxFiltOut,modOrder,"OutputType","bit","UnitAveragePower",true);
+end
+
+specAn = dsp.SpectrumAnalyzer(...
+    "NumInputPorts",2, ...
+    "SpectralAverages",50,...
+    "ShowLegend",true);
+specAn(txFiltOut,chanOut)
